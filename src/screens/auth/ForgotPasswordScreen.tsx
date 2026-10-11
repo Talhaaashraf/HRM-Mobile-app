@@ -8,13 +8,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types';
 import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
 import { supabase } from '../../lib/supabase';
+import { notify } from '../../lib/dialog';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
@@ -25,14 +25,14 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
 
   async function handleReset() {
     if (!email) {
-      Alert.alert('Enter your email', "We'll send you a reset link.");
+      notify('Enter your email', "We'll send you a reset link.");
       return;
     }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error.message);
+      notify('Error', error.message);
     } else {
       setSent(true);
     }

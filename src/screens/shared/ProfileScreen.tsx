@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
 import { changePassword, updateProfile } from '../../lib/api';
 import { initial, roleColors, roleLabel } from '../../lib/format';
 import { Button, ErrorText, Field } from '../../components/ui';
+import { confirm, notify } from '../../lib/dialog';
 
 function ProfileRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
       await changePassword(password);
       setPassword('');
       setMode('view');
-      Alert.alert('Password updated');
+      notify('Password updated');
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -93,10 +93,13 @@ export default function ProfileScreen() {
   }
 
   function handleSignOut() {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: signOut },
-    ]);
+    confirm({
+      title: 'Log out',
+      message: 'Are you sure you want to log out?',
+      confirmText: 'Log out',
+      destructive: true,
+      onConfirm: signOut,
+    });
   }
 
   const fullNameShown = profile?.full_name || 'Unknown';

@@ -45,6 +45,32 @@ npm install
 npm start          # scan the QR code with the Expo Go app on your phone
 ```
 
+## Testing with Docker (no Supabase account needed)
+This runs a full local Supabase (database, login, storage, chat) plus a web build of the app, all in Docker. It comes with demo data already loaded.
+
+```bash
+npx supabase start            # first run downloads images (a few minutes)
+npx supabase status -o env    # copy the ANON_KEY value
+```
+Create a file called `.env.docker` (it's git-ignored):
+```
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY from above>
+```
+```bash
+docker compose --env-file .env.docker up -d --build
+```
+Then open **http://localhost:8080** and log in with a demo account (password `password123`):
+- Recruiter panel: `recruiter@demo.com`
+- Job Finder panel: `jobfinder@demo.com`
+
+Useful commands:
+- **Database browser (Supabase Studio):** http://127.0.0.1:54323
+- **Reset to fresh demo data:** `npx supabase db reset`
+- **Stop everything:** `docker compose down`, then `npx supabase stop`
+
+To test on your phone with Expo Go against this local backend, set `EXPO_PUBLIC_SUPABASE_URL` in `.env.local` to `http://<your-PC-IP>:54321`. Your phone can't reach `127.0.0.1`, which is the phone itself.
+
 ## Build an installable app (free)
 ```bash
 npm install -g eas-cli

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ApplicationStatus, RecruiterJobsStackParamList } from '../../types';
@@ -8,6 +8,7 @@ import { getApplication, getResumeUrl, setApplicationStatus } from '../../lib/ap
 import { useFocusData } from '../../lib/useFocusData';
 import { APPLICATION_STATUSES, initial, statusColors, statusLabel, timeAgo } from '../../lib/format';
 import { Button, ErrorText, Loader, StatusBadge, ui } from '../../components/ui';
+import { notify } from '../../lib/dialog';
 
 type Props = NativeStackScreenProps<RecruiterJobsStackParamList, 'ApplicantDetail'>;
 
@@ -28,7 +29,7 @@ export default function ApplicantDetailScreen({ navigation, route }: Props) {
       await setApplicationStatus(applicationId, status);
       await reload();
     } catch (e: any) {
-      Alert.alert('Could not update status', e.message);
+      notify('Could not update status', e.message);
     } finally {
       setUpdating(null);
     }
@@ -40,7 +41,7 @@ export default function ApplicantDetailScreen({ navigation, route }: Props) {
     try {
       await Linking.openURL(await getResumeUrl(app.resume_url));
     } catch (e: any) {
-      Alert.alert('Could not open CV', e.message);
+      notify('Could not open CV', e.message);
     } finally {
       setOpeningCv(false);
     }
@@ -54,7 +55,9 @@ export default function ApplicantDetailScreen({ navigation, route }: Props) {
         </View>
         <Text style={ui.title}>{c?.full_name || 'Candidate'}</Text>
         {c?.job_title && <Text style={ui.body}>{c.job_title}</Text>}
-        <StatusBadge status={app.status} />
+        <View>
+          <StatusBadge status={app.status} />
+        </View>
       </View>
 
       <View style={ui.card}>

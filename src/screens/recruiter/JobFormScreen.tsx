@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -17,6 +16,7 @@ import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
 import { createJob, deleteJob, getJob, updateJob } from '../../lib/api';
 import { jobTypeLabel } from '../../lib/format';
 import { Button, ErrorText, Field, Loader } from '../../components/ui';
+import { confirm } from '../../lib/dialog';
 
 type Props = NativeStackScreenProps<RecruiterJobsStackParamList, 'JobForm'>;
 
@@ -86,21 +86,20 @@ export default function JobFormScreen({ navigation, route }: Props) {
   }
 
   function handleDelete() {
-    Alert.alert('Delete job', 'This also deletes all applications for this job. Continue?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteJob(jobId!);
-            navigation.popToTop();
-          } catch (e: any) {
-            setError(e.message);
-          }
-        },
+    confirm({
+      title: 'Delete job',
+      message: 'This also deletes all applications for this job. Continue?',
+      confirmText: 'Delete',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await deleteJob(jobId!);
+          navigation.popToTop();
+        } catch (e: any) {
+          setError(e.message);
+        }
       },
-    ]);
+    });
   }
 
   if (loading) return <Loader />;

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +16,7 @@ import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
 import { useAuth } from '../../context/AuthContext';
 import { roleColors, roleLabel } from '../../lib/format';
 import { Button, ErrorText, Field } from '../../components/ui';
+import { notify } from '../../lib/dialog';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
@@ -60,10 +60,8 @@ export default function SignupScreen({ navigation, route }: Props) {
     }
     // If email confirmation is off in Supabase, signUp already logged the user in.
     if (needsConfirmation) {
-      Alert.alert(
-        'Check your email',
-        "We've sent you a confirmation link. Once confirmed, log in.",
-        [{ text: 'Go to login', onPress: () => navigation.navigate('Login', { role }) }],
+      notify('Check your email', "We've sent you a confirmation link. Once confirmed, log in.", () =>
+        navigation.navigate('Login', { role }),
       );
     }
   }

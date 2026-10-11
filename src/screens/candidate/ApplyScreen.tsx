@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet,
-  ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
 import { applyToJob, uploadResume } from '../../lib/api';
 import { Button, ErrorText, Field, ui } from '../../components/ui';
+import { confirm, notify } from '../../lib/dialog';
 
 type Props = NativeStackScreenProps<CandidateJobsStackParamList, 'Apply'>;
 
@@ -36,7 +37,7 @@ export default function ApplyScreen({ navigation, route }: Props) {
     if (result.canceled) return;
     const file = result.assets[0];
     if (file.size && file.size > MAX_CV_BYTES) {
-      Alert.alert('File too large', 'Please choose a CV under 5 MB.');
+      notify('File too large', 'Please choose a CV under 5 MB.');
       return;
     }
     setResume(file);
@@ -57,16 +58,17 @@ export default function ApplyScreen({ navigation, route }: Props) {
         coverNote: coverNote.trim() || null,
         resumePath,
       });
-      Alert.alert('Application submitted!', 'The recruiter will review your application.', [
-        {
-          text: 'View my applications',
-          onPress: () => {
-            navigation.popToTop();
-            navigation.getParent()?.navigate('Applications');
-          },
+      confirm({
+        title: 'Application submitted!',
+        message: 'The recruiter will review your application. View your applications now?',
+        confirmText: 'View my applications',
+        cancelText: 'Keep browsing',
+        onConfirm: () => {
+          navigation.popToTop();
+          navigation.getParent()?.navigate('Applications');
         },
-        { text: 'Keep browsing', onPress: () => navigation.popToTop() },
-      ]);
+        onCancel: () => navigation.popToTop(),
+      });
     } catch (e: any) {
       setError(e.message);
     } finally {

@@ -1,0 +1,11 @@
+# Runs the web build of the app on http://localhost:8080
+# Usage: see "Testing with Docker" in README.md
+services:
+  app:
+    build:
+      context: .
+      args:
+        EXPO_PUBLIC_SUPABASE_URL: ${EXPO_PUBLIC_SUPABASE_URL:-http://127.0.0.1:54321}
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: ${EXPO_PUBLIC_SUPABASE_ANON_KEY:?Set EXPO_PUBLIC_SUPABASE_ANON_KEY (see README)}
+    ports:
+      - "8080:80"

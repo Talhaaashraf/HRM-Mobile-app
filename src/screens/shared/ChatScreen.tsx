@@ -116,6 +116,8 @@ export default function ChatScreen({ navigation, route }: any) {
           style={[styles.sendBtn, { backgroundColor: accent }, !text.trim() && { opacity: 0.5 }]}
           onPress={handleSend}
           disabled={!text.trim() || sending}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
         >
           {sending ? (
             <ActivityIndicator color={Colors.textInverse} size="small" />
