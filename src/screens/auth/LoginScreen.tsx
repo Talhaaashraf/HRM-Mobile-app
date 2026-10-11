@@ -2,23 +2,27 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Alert,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../types';
 import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { roleColors, roleLabel } from '../../lib/format';
+import { Button, ErrorText, Field } from '../../components/ui';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-export default function LoginScreen({ navigation }: Props) {
+export default function LoginScreen({ navigation, route }: Props) {
+  const { role } = route.params;
+  const { signIn } = useAuth();
+  const c = roleColors(role);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,84 +35,77 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const error = await signIn(email, password, role);
     setLoading(false);
-    if (error) {
-      setErrorMessage(error.message);
-    }
-    // On success AuthContext listener will update session → AppNavigator switches to main tabs
+    // On success AuthContext updates the session → AppNavigator switches to the main tabs.
+    if (error) setErrorMessage(error);
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        style={styles.inner}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to your MJT account</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+          <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
 
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
+          <View style={styles.header}>
+            <View style={[styles.rolePill, { backgroundColor: c.light }]}>
+              <Ionicons
+                name={role === 'recruiter' ? 'briefcase' : 'search'}
+                size={14}
+                color={c.main}
+              />
+              <Text style={[styles.rolePillText, { color: c.main }]}>
+                {roleLabel(role)} login
+              </Text>
+            </View>
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>Sign in to your {roleLabel(role)} account</Text>
+          </View>
+
+          <View style={styles.form}>
+            <Field
+              label="Email"
               placeholder="you@example.com"
-              placeholderTextColor={Colors.textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
               value={email}
               onChangeText={setEmail}
             />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
+            <Field
+              label="Password"
               placeholder="••••••••"
-              placeholderTextColor={Colors.textMuted}
               secureTextEntry
+              autoComplete="password"
               value={password}
               onChangeText={setPassword}
             />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
+              <Text style={[styles.forgotLink, { color: c.main }]}>Forgot password?</Text>
+            </TouchableOpacity>
           </View>
+
+          <ErrorText message={errorMessage} />
+          <Button title="Log in" color={c.main} loading={loading} onPress={handleLogin} />
 
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('ForgotPassword')}
+            onPress={() => navigation.navigate('Signup', { role })}
           >
-            <Text style={styles.forgotLink}>Forgot password?</Text>
+            <Text style={styles.link}>
+              Don't have an account?{' '}
+              <Text style={[styles.linkAccent, { color: c.main }]}>Sign up</Text>
+            </Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-          activeOpacity={0.85}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={Colors.textInverse} />
-          ) : (
-            <Text style={styles.primaryBtnText}>Log in</Text>
-          )}
-          {errorMessage && (
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('Signup', {})}
-        >
-          <Text style={styles.signupLink}>
-            Don't have an account?{' '}
-            <Text style={styles.signupLinkAccent}>Sign up</Text>
-          </Text>
-        </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -117,68 +114,37 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl,
     justifyContent: 'center',
     gap: Spacing.xl,
   },
+  back: { position: 'absolute', top: Spacing.base, left: Spacing.xl, padding: Spacing.xs },
   header: { gap: Spacing.xs },
+  rolePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: Spacing.xs,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  rolePillText: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
   title: {
     fontSize: Typography.size['2xl'],
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
-  subtitle: {
-    fontSize: Typography.size.base,
-    color: Colors.textSecondary,
-  },
+  subtitle: { fontSize: Typography.size.base, color: Colors.textSecondary },
   form: { gap: Spacing.base },
-  field: { gap: Spacing.xs },
-  label: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textPrimary,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    fontSize: Typography.size.base,
-    color: Colors.textPrimary,
-    backgroundColor: Colors.surface,
-  },
   forgotLink: {
     fontSize: Typography.size.sm,
-    color: Colors.primary,
+    fontWeight: Typography.weight.medium,
     textAlign: 'right',
   },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-  },
-  primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: {
-    color: Colors.textInverse,
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-  },
-  errorText: {
-    color: 'red',
-    marginTop: Spacing.xs,
-    textAlign: 'center',
-    fontSize: Typography.size.sm,
-  },
-  signupLink: {
-    textAlign: 'center',
-    fontSize: Typography.size.sm,
-    color: Colors.textMuted,
-  },
-  signupLinkAccent: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
-  },
+  link: { textAlign: 'center', fontSize: Typography.size.sm, color: Colors.textSecondary },
+  linkAccent: { fontWeight: Typography.weight.semibold },
 });

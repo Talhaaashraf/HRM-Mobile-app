@@ -1,51 +1,17 @@
 // ─── User & Auth ────────────────────────────────────────────────────────────
 
-export type UserRole = 'client' | 'candidate';
+// 'candidate' is shown to users as "Job Finder".
+export type UserRole = 'recruiter' | 'candidate';
 
 export interface Profile {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string | null;
   avatar_url: string | null;
   role: UserRole;
-  company_name: string | null; // clients only
+  company_name: string | null; // recruiters only
   job_title: string | null;
   phone: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// ─── Services ────────────────────────────────────────────────────────────────
-
-export type ServiceCategory =
-  | 'hr_consulting'
-  | 'business_consulting'
-  | 'recruitment_technical'
-  | 'recruitment_non_technical';
-
-export interface Service {
-  id: string;
-  title: string;
-  category: ServiceCategory;
-  description: string;
-  icon: string; // Ionicons name
-}
-
-// ─── Engagements (Client requests) ───────────────────────────────────────────
-
-export type EngagementStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
-
-export interface Engagement {
-  id: string;
-  client_id: string;
-  service_id: string;
-  service?: Service;
-  title: string;
-  description: string;
-  status: EngagementStatus;
-  assigned_consultant_name: string | null;
-  notes: string | null;
-  attachment_urls: string[];
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +22,7 @@ export type JobType = 'technical' | 'non_technical';
 
 export interface Job {
   id: string;
+  recruiter_id: string;
   title: string;
   company_name: string;
   location: string;
@@ -81,7 +48,8 @@ export interface Application {
   id: string;
   job_id: string;
   candidate_id: string;
-  job?: Job;
+  job?: Job | null;
+  candidate?: Profile | null;
   cover_note: string | null;
   resume_url: string | null;
   status: ApplicationStatus;
@@ -91,17 +59,9 @@ export interface Application {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-export interface Conversation {
-  id: string;
-  participant_ids: string[];
-  last_message: string | null;
-  last_message_at: string | null;
-  created_at: string;
-}
-
 export interface Message {
   id: string;
-  conversation_id: string;
+  application_id: string;
   sender_id: string;
   content: string;
   created_at: string;
@@ -110,29 +70,47 @@ export interface Message {
 // ─── Navigation ──────────────────────────────────────────────────────────────
 
 export type AuthStackParamList = {
-  Onboarding: undefined;
-  Login: undefined;
-  Signup: { role?: UserRole };
+  Welcome: undefined;
+  Login: { role: UserRole };
+  Signup: { role: UserRole };
   ForgotPassword: undefined;
 };
 
-export type ClientStackParamList = {
-  Engagements: undefined;
-  EngagementDetail: { engagementId: string };
-  RequestService: { serviceId?: string };
+export type RecruiterJobsStackParamList = {
+  MyJobs: undefined;
+  JobForm: { jobId?: string };
+  Applicants: { jobId: string; jobTitle: string };
+  ApplicantDetail: { applicationId: string };
+  Chat: { applicationId: string; title: string };
 };
 
-export type CandidateStackParamList = {
+export type CandidateJobsStackParamList = {
   JobListings: undefined;
   JobDetail: { jobId: string };
-  Apply: { jobId: string };
-  MyApplications: undefined;
+  Apply: { jobId: string; jobTitle: string };
 };
 
-export type MainTabParamList = {
-  Home: undefined;
-  JobsOrEngagements: undefined;
-  Chat: undefined;
+export type CandidateApplicationsStackParamList = {
+  MyApplications: undefined;
+  Chat: { applicationId: string; title: string };
+};
+
+export type MessagesStackParamList = {
+  Conversations: undefined;
+  Chat: { applicationId: string; title: string };
+};
+
+export type RecruiterTabParamList = {
+  Dashboard: undefined;
+  RecruiterJobs: undefined;
+  Messages: undefined;
+  Profile: undefined;
+};
+
+export type CandidateTabParamList = {
+  FindJobs: undefined;
+  Applications: undefined;
+  Messages: undefined;
   Profile: undefined;
 };
 

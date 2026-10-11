@@ -2,30 +2,30 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthStackParamList, UserRole } from '../../types';
+import { AuthStackParamList } from '../../types';
 import { Colors, Spacing, Typography, Radius } from '../../constants/tokens';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { roleColors, roleLabel } from '../../lib/format';
+import { Button, ErrorText, Field } from '../../components/ui';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation, route }: Props) {
-  const { setRole } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(
-    route.params?.role ?? 'candidate',
-  );
+  const { role } = route.params;
+  const { signUp } = useAuth();
+  const c = roleColors(role);
   const [fullName, setFullName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,8 +33,12 @@ export default function SignupScreen({ navigation, route }: Props) {
 
   async function handleSignup() {
     setErrorMessage(null);
-    if (!fullName || !email || !password) {
+    if (!fullName.trim() || !email.trim() || !password) {
       setErrorMessage('Please fill in all fields.');
+      return;
+    }
+    if (role === 'recruiter' && !companyName.trim()) {
+      setErrorMessage('Please enter your company name.');
       return;
     }
     if (password.length < 6) {
@@ -42,34 +46,26 @@ export default function SignupScreen({ navigation, route }: Props) {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
+    const { error, needsConfirmation } = await signUp({
       email,
       password,
-      options: {
-        data: { full_name: fullName, role: selectedRole },
-      },
+      fullName,
+      role,
+      companyName: role === 'recruiter' ? companyName : undefined,
     });
     setLoading(false);
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(error);
       return;
     }
-    const userId = data?.user?.id;
-    if (userId) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ id: userId, role: selectedRole, full_name: fullName });
-      if (profileError) {
-        setErrorMessage(profileError.message);
-        return;
-      }
+    // If email confirmation is off in Supabase, signUp already logged the user in.
+    if (needsConfirmation) {
+      Alert.alert(
+        'Check your email',
+        "We've sent you a confirmation link. Once confirmed, log in.",
+        [{ text: 'Go to login', onPress: () => navigation.navigate('Login', { role }) }],
+      );
     }
-    setRole(selectedRole);
-    Alert.alert(
-      'Check your email',
-      "We've sent you a confirmation link. Once confirmed, log in.",
-      [{ text: 'Go to login', onPress: () => navigation.navigate('Login') }],
-    );
   }
 
   return (
@@ -78,100 +74,59 @@ export default function SignupScreen({ navigation, route }: Props) {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView
-          contentContainerStyle={styles.inner}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>Create account</Text>
-            <Text style={styles.subtitle}>Join MJT Empowerment Enterprises</Text>
-          </View>
+        <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+          <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
 
-          {/* Role picker */}
-          <View style={styles.roleSection}>
-            <Text style={styles.label}>I am a…</Text>
-            <View style={styles.rolePicker}>
-              {(['client', 'candidate'] as UserRole[]).map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={[
-                    styles.roleOption,
-                    selectedRole === r && styles.roleOptionActive,
-                  ]}
-                  onPress={() => setSelectedRole(r)}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.roleOptionText,
-                      selectedRole === r && styles.roleOptionTextActive,
-                    ]}
-                  >
-                    {r === 'client' ? 'Client / business' : 'Job candidate'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.header}>
+            <View style={[styles.rolePill, { backgroundColor: c.light }]}>
+              <Text style={[styles.rolePillText, { color: c.main }]}>{roleLabel(role)}</Text>
             </View>
+            <Text style={styles.title}>Create account</Text>
+            <Text style={styles.subtitle}>
+              {role === 'recruiter'
+                ? 'Start posting jobs and hiring today.'
+                : 'Find your next job in minutes.'}
+            </Text>
           </View>
 
           <View style={styles.form}>
-            <View style={styles.field}>
-              <Text style={styles.label}>Full name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Jane Smith"
-                placeholderTextColor={Colors.textMuted}
-                value={fullName}
-                onChangeText={setFullName}
+            <Field label="Full name" placeholder="Jane Smith" value={fullName} onChangeText={setFullName} />
+            {role === 'recruiter' && (
+              <Field
+                label="Company name"
+                placeholder="Acme Ltd"
+                value={companyName}
+                onChangeText={setCompanyName}
               />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor={Colors.textMuted}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Min. 6 characters"
-                placeholderTextColor={Colors.textMuted}
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-            </View>
+            )}
+            <Field
+              label="Email"
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <Field
+              label="Password"
+              placeholder="Min. 6 characters"
+              secureTextEntry
+              autoComplete="new-password"
+              value={password}
+              onChangeText={setPassword}
+            />
           </View>
 
-          <TouchableOpacity
-            style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-            activeOpacity={0.85}
-            onPress={handleSignup}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.textInverse} />
-            ) : (
-              <Text style={styles.primaryBtnText}>Create account</Text>
-            )}
-          </TouchableOpacity>
+          <ErrorText message={errorMessage} />
+          <Button title="Create account" color={c.main} loading={loading} onPress={handleSignup} />
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.loginLink}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Login', { role })}>
+            <Text style={styles.link}>
               Already have an account?{' '}
-              <Text style={styles.loginLinkAccent}>Log in</Text>
+              <Text style={[styles.linkAccent, { color: c.main }]}>Log in</Text>
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -183,91 +138,30 @@ export default function SignupScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   inner: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing['3xl'],
+    paddingTop: Spacing['4xl'],
+    paddingBottom: Spacing.xl,
+    justifyContent: 'center',
     gap: Spacing.xl,
   },
+  back: { position: 'absolute', top: Spacing.base, left: Spacing.xl, padding: Spacing.xs },
   header: { gap: Spacing.xs },
+  rolePill: {
+    alignSelf: 'flex-start',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  rolePillText: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
   title: {
     fontSize: Typography.size['2xl'],
     fontWeight: Typography.weight.bold,
     color: Colors.textPrimary,
   },
-  subtitle: {
-    fontSize: Typography.size.base,
-    color: Colors.textSecondary,
-  },
-  roleSection: { gap: Spacing.sm },
-  rolePicker: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  roleOption: {
-    flex: 1,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-  },
-  roleOptionActive: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
-    borderWidth: 1.5,
-  },
-  roleOptionText: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textSecondary,
-  },
-  roleOptionTextActive: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.semibold,
-  },
+  subtitle: { fontSize: Typography.size.base, color: Colors.textSecondary },
   form: { gap: Spacing.base },
-  field: { gap: Spacing.xs },
-  label: {
-    fontSize: Typography.size.sm,
-    fontWeight: Typography.weight.medium,
-    color: Colors.textPrimary,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    fontSize: Typography.size.base,
-    color: Colors.textPrimary,
-    backgroundColor: Colors.surface,
-  },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-  },
-  primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: {
-    color: Colors.textInverse,
-    fontSize: Typography.size.base,
-    fontWeight: Typography.weight.semibold,
-  },
-  errorText: {
-    color: 'red',
-    marginTop: Spacing.xs,
-    textAlign: 'center',
-    fontSize: Typography.size.sm,
-  },
-  loginLink: {
-    textAlign: 'center',
-    fontSize: Typography.size.sm,
-    color: Colors.textMuted,
-  },
-  loginLinkAccent: {
-    color: Colors.primary,
-    fontWeight: Typography.weight.medium,
-  },
+  link: { textAlign: 'center', fontSize: Typography.size.sm, color: Colors.textSecondary },
+  linkAccent: { fontWeight: Typography.weight.semibold },
 });
