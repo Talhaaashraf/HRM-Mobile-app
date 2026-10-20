@@ -77,6 +77,11 @@ npm install -g eas-cli
 eas login                      # free Expo account
 eas build -p android --profile preview   # gives you an .apk download link
 ```
+`.env.local` is not uploaded to the build server, so add your Supabase keys to EAS once before building:
+```bash
+eas env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://xxxxx.supabase.co --environment preview --environment production --visibility plaintext
+eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value eyJ... --environment preview --environment production --visibility plaintext
+```
 Publishing to Google Play has a one-time fee of $25. The App Store costs $99 per year. You only need these to publish publicly; the APK above is free.
 
 ## Free tier limits
