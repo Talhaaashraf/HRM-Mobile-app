@@ -1,4 +1,4 @@
-# MJT Recruitment — iOS & Android
+# Recruitment — iOS & Android
 
 A recruitment app built with Expo (React Native). It has two separate panels:
 
